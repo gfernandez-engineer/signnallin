@@ -1,22 +1,42 @@
 package com.signallin.signall_app.aggregates.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.Getter;
-import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.*;
 
-@Getter
-@Setter
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ResponseStepToValidate{
-    private String id_number;
-    private String id_parallel;
+
+    @JsonProperty("id_number")
+    private String idNumber;
+
+    @JsonProperty("id_parallel")
+    private String idParallel;
+
     private String name;
-    private String id_workflow;
+
+    @JsonProperty("id_workflow")
+    private String idWorkflow;
+
+    @JsonProperty("assigned_to")
     private ResponseAssignToStep responseAssignToStep;
-    private String[] step_attributes;
-    private String step_type;
-    private String created_at;
-    private String limit_date;
-    private Boolean is_signature_step;
+
+    @JsonProperty("step_attributes")
+    private String[] stepAttributes;
+
+    @JsonProperty("step_type")
+    private String stepType;
+
+    @JsonProperty("created_at")
+    private String createdAt;
+
+    @JsonProperty("limit_date")
+    private String limitDate;
+
+    @JsonProperty("is_signature_step")
+    private Boolean isSignatureStep;
 
 }

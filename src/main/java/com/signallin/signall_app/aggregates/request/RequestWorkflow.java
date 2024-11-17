@@ -5,11 +5,11 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class WorkflowRequest {
+public class RequestWorkflow {
     private String decision_name;
     private String decision_workflow_template_id;
 
-    public WorkflowRequest() {
+    public RequestWorkflow() {
 
     }
 
