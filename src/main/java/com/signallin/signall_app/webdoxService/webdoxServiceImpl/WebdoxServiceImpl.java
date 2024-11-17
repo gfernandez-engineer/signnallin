@@ -1,7 +1,8 @@
 package com.signallin.signall_app.webdoxService.webdoxServiceImpl;
 
 import com.signallin.signall_app.aggregates.request.RequestDocumentAttach;
-import com.signallin.signall_app.aggregates.request.WorkflowRequest;
+import com.signallin.signall_app.aggregates.request.RequestSignDocument;
+import com.signallin.signall_app.aggregates.request.RequestWorkflow;
 import com.signallin.signall_app.aggregates.response.ResponseDecisionWorkflow;
 import com.signallin.signall_app.aggregates.response.ResponseDocumentWF;
 import com.signallin.signall_app.client.WebdoxClient;
@@ -11,6 +12,7 @@ import com.signallin.signall_app.aggregates.constants.Constants;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 @RequiredArgsConstructor
@@ -46,7 +49,7 @@ public class WebdoxServiceImpl implements WebdoxService {
 
 
     @Override
-    public ResponseDecisionWorkflow createWorkflow(WorkflowRequest workflowRequest) {
+    public ResponseDecisionWorkflow createWorkflow(RequestWorkflow workflowRequest) {
         //WorkflowRequest request = new WorkflowRequest();
         //request.setDecision_name("43577834 - 5 wrkf - test");
         //request.setDecision_workflow_template_id(templateWf_ID);
@@ -57,6 +60,11 @@ public class WebdoxServiceImpl implements WebdoxService {
     @Override
     public ResponseDocumentWF attachDocument(String idWF,String numero, String parallel_number,RequestDocumentAttach requestDocumentAttach){
         return webdoxClient.attachDocument( idWF, numero, parallel_number, requestDocumentAttach.getOrigin(), requestDocumentAttach.getVersioned_document(),requestDocumentAttach.getAttachment(), tokenOK);
+    }
+
+    @Override
+    public String setSignableDocument(String idWF, RequestSignDocument requestSignDocument){
+        return webdoxClient.setSignableDocument(idWF, requestSignDocument, tokenOK);
     }
 
     @Override
@@ -74,11 +82,13 @@ public class WebdoxServiceImpl implements WebdoxService {
         ResponseDecisionWorkflow responseDecisionWorkflow;
         ResponseDocumentWF responseDocumentWF;
         MultipartFile attachment;
+        String idDoc = null;
 
         RequestDocumentAttach requestDocumentAttach;
 
         String fileName = filePath.getFileName().toString().replace(".pdf", "");
         String[] parts = fileName.split("___");
+        String idWF = null;
 
         if (parts.length == 4) {
             String documento = parts[0];
@@ -87,12 +97,16 @@ public class WebdoxServiceImpl implements WebdoxService {
             String email = parts[3];
 
             // PROCESO 1: REGISTRO DE WORKFLOW
-            WorkflowRequest workflowRequest = new WorkflowRequest();
-            workflowRequest.setDecision_name("WF-Solicitud de Firma Digital - Documento "+documento);
-            workflowRequest.setDecision_workflow_template_id(templateWf_ID);
-            responseDecisionWorkflow = createWorkflow(workflowRequest);
-
-            String idWF = responseDecisionWorkflow.getId();
+            RequestWorkflow requestWorkflow = new RequestWorkflow();
+            requestWorkflow.setDecision_name("WF-Solicitud de Firma Digital - Documento "+documento);
+            requestWorkflow.setDecision_workflow_template_id(templateWf_ID);
+            responseDecisionWorkflow = createWorkflow(requestWorkflow);
+            if (!Objects.isNull(responseDecisionWorkflow) && !Objects.isNull(responseDecisionWorkflow.getId())){
+                idWF = responseDecisionWorkflow.getId();
+            }
+            else {
+                return;
+            }
 
             System.out.printf("Procesando archivo: %s%n", filePath);
             System.out.printf("Nombre Remitente: %s, País: %s, Documento: %s, Email: %s%n",
@@ -109,6 +123,10 @@ public class WebdoxServiceImpl implements WebdoxService {
                 requestDocumentAttach.setAttachment(multipartFile);
 
                 responseDocumentWF = attachDocument(idWF,"1","0",requestDocumentAttach);
+                //ResponseEntity<String>response = attachDocument(idWF,"1","0",requestDocumentAttach);
+                //System.out.println("Respuesta cruda: " + response.getBody());
+
+                idDoc = responseDocumentWF.getResponseDocument().getId();
 
             } catch (IOException e) {
                 System.err.println("Error al leer el archivo: " + e.getMessage());
@@ -118,10 +136,22 @@ public class WebdoxServiceImpl implements WebdoxService {
 
             System.out.printf("Se cargo el archivo: %s%n", filePath+fileName);
 
-
-            // PROCESO 3: ASIGNACIÓN DE DOCUMENTO A FIRMA
-
-
+            if (!Objects.isNull(responseDocumentWF) && !Objects.isNull(idDoc)){
+                // PROCESO 3: ASIGNACIÓN DE DOCUMENTO A FIRMA
+                RequestSignDocument requestSignDocument = new RequestSignDocument();
+                requestSignDocument.setDocument_id(idDoc);
+                requestSignDocument.setNumber("1");
+                String resSetSignDoc = setSignableDocument(idWF,requestSignDocument);
+                if (resSetSignDoc.equals("Success")){
+                    System.out.println("Se asigno el documento:" + fileName + " al proceso de firma. %n");
+                }
+                else{
+                    return;
+                }
+            }
+            else {
+                return;
+            }
 
             // PROCESO 4: VALIDAR PASO DEL PROCESO 1
 

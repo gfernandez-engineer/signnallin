@@ -1,14 +1,12 @@
 package com.signallin.signall_app.controller;
 
-import com.signallin.signall_app.aggregates.request.WorkflowRequest;
+import com.signallin.signall_app.aggregates.request.RequestWorkflow;
 import com.signallin.signall_app.aggregates.response.ResponseDecisionWorkflow;
 import com.signallin.signall_app.webdoxService.webdoxServiceImpl.WebdoxServiceImpl;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.http.HttpStatusCode;
 
 
 @RestController
@@ -25,13 +23,13 @@ public class WebdoxController {
 
 
     @PostMapping("/create-workflow")
-    public ResponseEntity<ResponseDecisionWorkflow> createWorkflow(@RequestBody WorkflowRequest workflowRequest)
+    public ResponseEntity<ResponseDecisionWorkflow> createWorkflow(@RequestBody RequestWorkflow workflowRequest)
     {
         return new ResponseEntity<>(webdoxService.createWorkflow(workflowRequest), HttpStatus.CREATED);
     }
 
     @PostMapping("/process-pdfs")
-    public ResponseEntity<String> processPdfFiles(@RequestBody WorkflowRequest workflowRequest)
+    public ResponseEntity<String> processPdfFiles(@RequestBody RequestWorkflow workflowRequest)
     {
         try {
             // Llamar al método del servicio para procesar los archivos PDF
