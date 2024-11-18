@@ -1,10 +1,10 @@
 package com.signallin.signall_app.webdoxService.webdoxServiceImpl;
 
-import com.signallin.signall_app.aggregates.request.RequestDocumentAttach;
-import com.signallin.signall_app.aggregates.request.RequestSignDocument;
-import com.signallin.signall_app.aggregates.request.RequestWorkflow;
+import com.signallin.signall_app.aggregates.request.*;
 import com.signallin.signall_app.aggregates.response.ResponseDecisionWorkflow;
 import com.signallin.signall_app.aggregates.response.ResponseDocumentWF;
+import com.signallin.signall_app.aggregates.response.ResponseSigner;
+import com.signallin.signall_app.aggregates.response.ResponseValidateDocuWF;
 import com.signallin.signall_app.client.WebdoxClient;
 import com.signallin.signall_app.util.CustomMultipartFile;
 import com.signallin.signall_app.webdoxService.WebdoxService;
@@ -40,6 +40,7 @@ public class WebdoxServiceImpl implements WebdoxService {
     private String sharedFolderPath;
 
     private String tokenOK;
+
     // Asignar el token a tokenOK después de la inyección de dependencias
     @PostConstruct
     public void init() {
@@ -58,13 +59,23 @@ public class WebdoxServiceImpl implements WebdoxService {
     }
 
     @Override
-    public ResponseDocumentWF attachDocument(String idWF,String numero, String parallel_number,RequestDocumentAttach requestDocumentAttach){
-        return webdoxClient.attachDocument( idWF, numero, parallel_number, requestDocumentAttach.getOrigin(), requestDocumentAttach.getVersioned_document(),requestDocumentAttach.getAttachment(), tokenOK);
+    public ResponseDocumentWF attachDocument(String idWF,String stepNumber, String paralleNumber,RequestDocumentAttach requestDocumentAttach){
+        return webdoxClient.attachDocument( idWF, stepNumber, paralleNumber, requestDocumentAttach.getOrigin(), requestDocumentAttach.getVersioned_document(),requestDocumentAttach.getAttachment(), tokenOK);
     }
 
     @Override
     public String setSignableDocument(String idWF, RequestSignDocument requestSignDocument){
         return webdoxClient.setSignableDocument(idWF, requestSignDocument, tokenOK);
+    }
+
+    @Override
+    public ResponseValidateDocuWF validateDocuOnStepOneOfWF(String idWF, String stepNumber, String parallelNumber) {
+        return  webdoxClient.validateDocuOnStepOneOfWF(idWF,stepNumber, parallelNumber, tokenOK);
+    }
+
+    @Override
+    public ResponseSigner AssignSignerToWF(String idWF, String stepNumber, String parallelNumber, RequestSignerForWF requestSignerForWF){
+        return  webdoxClient.AssignSignerToWF(idWF,stepNumber,parallelNumber, requestSignerForWF, tokenOK);
     }
 
     @Override
@@ -79,28 +90,41 @@ public class WebdoxServiceImpl implements WebdoxService {
     }
 
     private void extractFileInfo(Path filePath)  {
+
+        //Declaración de variables
         ResponseDecisionWorkflow responseDecisionWorkflow;
         ResponseDocumentWF responseDocumentWF;
-        MultipartFile attachment;
+        MultipartFile attachment = null;
         String idDoc = null;
-
+        String idWF = null;
+        String stepNumber = null;
+        String parallelNumber = null;
         RequestDocumentAttach requestDocumentAttach;
+        String nroDocumento;
+        String nombreRemitente;
+        String pais;
+        String email;
+
+
+
+
 
         String fileName = filePath.getFileName().toString().replace(".pdf", "");
         String[] parts = fileName.split("___");
-        String idWF = null;
 
         if (parts.length == 4) {
-            String documento = parts[0];
-            String nombreRemitente = parts[1];
-            String pais = parts[2];
-            String email = parts[3];
+
+            nroDocumento = parts[0];
+            nombreRemitente = parts[1];
+            pais = parts[2];
+            email = parts[3];
 
             // PROCESO 1: REGISTRO DE WORKFLOW
             RequestWorkflow requestWorkflow = new RequestWorkflow();
-            requestWorkflow.setDecision_name("WF-Solicitud de Firma Digital - Documento "+documento);
+            requestWorkflow.setDecision_name("WF-Solicitud de Firma Digital - Documento "+nroDocumento);
             requestWorkflow.setDecision_workflow_template_id(templateWf_ID);
             responseDecisionWorkflow = createWorkflow(requestWorkflow);
+
             if (!Objects.isNull(responseDecisionWorkflow) && !Objects.isNull(responseDecisionWorkflow.getId())){
                 idWF = responseDecisionWorkflow.getId();
             }
@@ -110,9 +134,12 @@ public class WebdoxServiceImpl implements WebdoxService {
 
             System.out.printf("Procesando archivo: %s%n", filePath);
             System.out.printf("Nombre Remitente: %s, País: %s, Documento: %s, Email: %s%n",
-                    documento, nombreRemitente, pais , email);
+                    nroDocumento, nombreRemitente, pais , email);
+
 
             // PROCESO 2: CARGA DE DOCUMENTO
+            stepNumber = "1";
+            parallelNumber = "0";
             requestDocumentAttach = new RequestDocumentAttach();
             requestDocumentAttach.setOrigin("pc");
             requestDocumentAttach.setVersioned_document("true");
@@ -122,7 +149,11 @@ public class WebdoxServiceImpl implements WebdoxService {
                 MultipartFile multipartFile = new CustomMultipartFile(content, "documento-a-firmar.pdf", "application/pdf");
                 requestDocumentAttach.setAttachment(multipartFile);
 
-                responseDocumentWF = attachDocument(idWF,"1","0",requestDocumentAttach);
+                //Buscando workFlow
+                //Completar....
+
+
+                responseDocumentWF = attachDocument(idWF,stepNumber,parallelNumber,requestDocumentAttach);
                 //ResponseEntity<String>response = attachDocument(idWF,"1","0",requestDocumentAttach);
                 //System.out.println("Respuesta cruda: " + response.getBody());
 
@@ -136,13 +167,15 @@ public class WebdoxServiceImpl implements WebdoxService {
 
             System.out.printf("Se cargo el archivo: %s%n", filePath+fileName);
 
+
+            // PROCESO 3: ASIGNACIÓN DE DOCUMENTO A FIRMA
+
             if (!Objects.isNull(responseDocumentWF) && !Objects.isNull(idDoc)){
-                // PROCESO 3: ASIGNACIÓN DE DOCUMENTO A FIRMA
                 RequestSignDocument requestSignDocument = new RequestSignDocument();
                 requestSignDocument.setDocument_id(idDoc);
                 requestSignDocument.setNumber("1");
                 String resSetSignDoc = setSignableDocument(idWF,requestSignDocument);
-                if (resSetSignDoc.equals("Success")){
+                if (resSetSignDoc.equals("success")){
                     System.out.println("Se asigno el documento:" + fileName + " al proceso de firma. %n");
                 }
                 else{
@@ -154,12 +187,34 @@ public class WebdoxServiceImpl implements WebdoxService {
             }
 
             // PROCESO 4: VALIDAR PASO DEL PROCESO 1
+            stepNumber = "1";
+            ResponseValidateDocuWF responseValidateDocuWF = validateDocuOnStepOneOfWF(idWF,stepNumber,parallelNumber);
+            System.out.println("Se realizo el STEP 1 del WF");
 
 
             // PROCESO 5: CREACIÓN DE FIRMANTE
+            stepNumber = "2";
+            RequestSignerForWF requestSignerForWF = new RequestSignerForWF();
+            RequestSigner requestSigner = new RequestSigner();
+            requestSigner.setKind("external");
+            requestSigner.setUserId("");
+            requestSigner.setCountryCode(pais);
+            requestSigner.setName(nombreRemitente);
+            requestSigner.setEmail(email);
+            requestSigner.setNationalIdentNumber(nroDocumento);
+            requestSigner.setNationalIdentKindId("afd11efc-12a4-4d8d-b72a-343d4e806a55");// CC es el documento más común y utilizado por los ciudadanos colombianos.
+            requestSigner.setCcEmail("");
+            requestSigner.setUseNotificMethWsp(true);
+            requestSigner.setPhoneNumber("");
 
+            requestSignerForWF.setRequestSigner(requestSigner);
+
+            ResponseSigner responseSigner = AssignSignerToWF(idWF, stepNumber, parallelNumber, requestSignerForWF);
 
             // PROCESO 6: VALIDAR PASO DEL PROCESO 2
+
+            String a = "1";
+
 
         } else {
             System.err.printf("El archivo %s no cumple con el formato esperado.%n", filePath);

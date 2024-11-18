@@ -22,7 +22,7 @@ public class ResponseStepToValidate{
     private String idWorkflow;
 
     @JsonProperty("assigned_to")
-    private ResponseAssignToStep responseAssignToStep;
+    private ResponseAssignToStep[] responseAssignToStep;
 
     @JsonProperty("step_attributes")
     private String[] stepAttributes;
@@ -36,7 +36,7 @@ public class ResponseStepToValidate{
     @JsonProperty("limit_date")
     private String limitDate;
 
-    @JsonProperty("is_signature_step")
-    private Boolean isSignatureStep;
+    //@JsonProperty("is_signature_step")
+    //private Boolean isSignatureStep;
 
 }
