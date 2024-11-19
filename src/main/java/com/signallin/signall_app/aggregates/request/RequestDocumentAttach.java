@@ -1,11 +1,11 @@
 package com.signallin.signall_app.aggregates.request;
 
-import lombok.*;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.web.multipart.MultipartFile;
 
-@Data //Genera automáticamente los métodos getters, setters, toString, equals, y hashCode.
-@NoArgsConstructor
-@AllArgsConstructor
+@Setter
+@Getter
 public class RequestDocumentAttach {
     private String origin;
     private String versioned_document;

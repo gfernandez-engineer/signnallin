@@ -1,16 +1,11 @@
 package com.signallin.signall_app.aggregates.response;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.*;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL)
+@Getter
+@Setter
 public class ResponseValidateDocuWF {
     private Boolean success;
-
-    @JsonProperty("step")
     private ResponseStepToValidate responseStepToValidate;
 }

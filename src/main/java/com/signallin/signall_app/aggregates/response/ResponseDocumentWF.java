@@ -1,18 +1,19 @@
 package com.signallin.signall_app.aggregates.response;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL)
+@Setter
+@Getter
 public class ResponseDocumentWF {
+    private String id;
+    private String name;
+    private String type;
+    private Boolean in_repository;
+    private Boolean signable;
+    private Boolean signed;
+    private String created_at;
 
-    @JsonProperty("document")
-    private ResponseDocumentData responseDocument;
+
 
 }
