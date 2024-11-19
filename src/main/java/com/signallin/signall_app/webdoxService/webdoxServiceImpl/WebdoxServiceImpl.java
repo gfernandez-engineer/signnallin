@@ -4,7 +4,7 @@ import com.signallin.signall_app.aggregates.request.*;
 import com.signallin.signall_app.aggregates.response.ResponseDecisionWorkflow;
 import com.signallin.signall_app.aggregates.response.ResponseDocumentWF;
 import com.signallin.signall_app.aggregates.response.ResponseSigner;
-import com.signallin.signall_app.aggregates.response.ResponseValidateDocuWF;
+import com.signallin.signall_app.aggregates.response.ResponseValidateStepOfWF;
 import com.signallin.signall_app.client.WebdoxClient;
 import com.signallin.signall_app.util.CustomMultipartFile;
 import com.signallin.signall_app.webdoxService.WebdoxService;
@@ -69,8 +69,8 @@ public class WebdoxServiceImpl implements WebdoxService {
     }
 
     @Override
-    public ResponseValidateDocuWF validateDocuOnStepOneOfWF(String idWF, String stepNumber, String parallelNumber) {
-        return  webdoxClient.validateDocuOnStepOneOfWF(idWF,stepNumber, parallelNumber, tokenOK);
+    public ResponseValidateStepOfWF validateStepOfWF(String idWF, String stepNumber, String parallelNumber) {
+        return  webdoxClient.validateStepOfWF(idWF,stepNumber, parallelNumber, tokenOK);
     }
 
     @Override
@@ -89,7 +89,152 @@ public class WebdoxServiceImpl implements WebdoxService {
         }
     }
 
+    private ResponseDecisionWorkflow createWorkflow(Path filePath, String nroDocumento, String nombreRemitente, String pais, String email){
+        String idWF = null;
+
+        ResponseDecisionWorkflow responseDecisionWorkflow;
+        RequestWorkflow requestWorkflow = new RequestWorkflow();
+        requestWorkflow.setDecision_name("WF-Solicitud de Firma Digital - Documento " +nroDocumento);
+        requestWorkflow.setDecision_workflow_template_id(templateWf_ID);
+        return responseDecisionWorkflow = createWorkflow(requestWorkflow);
+
+    }
+
+    private ResponseDocumentWF attachDocumentToWF(Path filePath, String idWF, String stepNumber, String parallelNumber ){
+        ResponseDocumentWF responseDocumentWF;
+        RequestDocumentAttach requestDocumentAttach;
+        requestDocumentAttach = new RequestDocumentAttach();
+        requestDocumentAttach.setOrigin("pc");
+        requestDocumentAttach.setVersioned_document("true");
+        try {
+            filePath = Paths.get(filePath.toUri());
+            byte[] content = Files.readAllBytes(filePath);
+            MultipartFile multipartFile = new CustomMultipartFile(content, "documento-a-firmar.pdf", "application/pdf");
+            requestDocumentAttach.setAttachment(multipartFile);
+
+            return responseDocumentWF = attachDocument(idWF,stepNumber,parallelNumber,requestDocumentAttach);
+
+        } catch (IOException e) {
+            System.err.println("Error al leer el archivo: " + e.getMessage());
+            // Manejar el error adecuadamente, por ejemplo, lanzar una excepción personalizada
+            throw new RuntimeException("No se pudo leer el archivo: " + filePath, e);
+        }
+    }
+
+
+
     private void extractFileInfo(Path filePath)  {
+
+        //Declaración de variables
+        ResponseDecisionWorkflow responseDecisionWorkflow;
+        ResponseDocumentWF responseDocumentWF;
+        MultipartFile attachment = null;
+        String idDoc = null;
+        String idWF = null;
+        String stepNumber = null;
+        String parallelNumber = "0";
+        RequestDocumentAttach requestDocumentAttach;
+        String nroDocumento;
+        String nombreRemitente;
+        String pais;
+        String email;
+        ResponseValidateStepOfWF responseValidateDocuWF;
+
+        String fileName = filePath.getFileName().toString().replace(".pdf", "");
+        String[] parts = fileName.split("___");
+
+        if (parts.length == 4) {
+
+            nroDocumento = parts[0];
+            nombreRemitente = parts[1];
+            pais = parts[2];
+            email = parts[3];
+
+            // PROCESO 1: REGISTRO DE WORKFLOW
+            System.out.println("01. Procesando la creación del Workflow.");
+            responseDecisionWorkflow = createWorkflow(filePath,nroDocumento,nombreRemitente,pais,email);
+            if (!Objects.isNull(responseDecisionWorkflow) && !Objects.isNull(responseDecisionWorkflow.getId())){
+                idWF = responseDecisionWorkflow.getId();
+                System.out.println("Workflow creado.");
+            }
+            else {
+                return;
+            }
+
+            // PROCESO 2: CARGA DE DOCUMENTO
+            System.out.printf("02. Procesando archivo: %s%n", filePath);
+            System.out.printf("Nombre Remitente: %s, País: %s, Documento: %s, Email: %s%n",
+                    nroDocumento, nombreRemitente, pais , email);
+
+            stepNumber = "1";
+            responseDocumentWF = attachDocumentToWF(filePath, idWF, stepNumber, parallelNumber);
+            if (Objects.nonNull(responseDocumentWF)){
+                idDoc = responseDocumentWF.getResponseDocument().getId();
+                System.out.printf("Se cargo el archivo: %s%n", filePath+fileName);
+            }
+            else {
+                return;
+            }
+
+            // PROCESO 3: ASIGNACIÓN DE DOCUMENTO A FIRMA
+            if (Objects.nonNull(idDoc)){
+                RequestSignDocument requestSignDocument = new RequestSignDocument();
+                requestSignDocument.setDocument_id(idDoc);
+                requestSignDocument.setNumber(stepNumber);
+                String resSetSignDoc = setSignableDocument(idWF,requestSignDocument);
+                if (resSetSignDoc.equals("success")){
+                    System.out.println("Se asigno el documento:" + fileName + " al proceso de firma. %n");
+                }
+                else{
+                    return;
+                }
+            }
+            else {
+                return;
+            }
+
+            // PROCESO 4: VALIDAR PASO DEL PROCESO 1
+            responseValidateDocuWF = validateStepOfWF(idWF,stepNumber,parallelNumber);
+            System.out.println("Se realizo el STEP 1 del WF");
+
+
+            // PROCESO 5: CREACIÓN DE FIRMANTE
+            stepNumber = "2";
+            RequestSignerForWF requestSignerForWF = new RequestSignerForWF();
+            RequestSigner requestSigner = new RequestSigner();
+            requestSigner.setKind(Constants.EXTERNAL);
+            requestSigner.setUserId("");
+            requestSigner.setCountryCode(pais);
+            requestSigner.setName(nombreRemitente);
+            requestSigner.setEmail(email);
+            requestSigner.setNationalIdentNumber(nroDocumento);
+            requestSigner.setNationalIdentKindId(Constants.TYPE_DOC_CC);
+            requestSigner.setCcEmail("");
+            requestSigner.setUseNotificMethWsp(true);
+            requestSigner.setPhoneNumber("");
+            requestSignerForWF.setRequestSigner(requestSigner);
+
+            ResponseSigner responseSigner = AssignSignerToWF(idWF, stepNumber, parallelNumber, requestSignerForWF);
+
+            if (Objects.nonNull(responseSigner)){
+                System.out.println("Se ingreso el firmante");
+            }
+            else
+            {
+                return;
+            }
+
+            // PROCESO 6: VALIDAR PASO DEL PROCESO 2
+            stepNumber = "2";
+            responseValidateDocuWF = validateStepOfWF(idWF,stepNumber,parallelNumber);
+            System.out.println("Se realizó el STEP 2 del WF");
+        }
+        else {
+            System.err.printf("El archivo %s no cumple con el formato esperado.%n", filePath);
+        }
+    }
+
+    private void extractFileInfo_bk(Path filePath)  {
 
         //Declaración de variables
         ResponseDecisionWorkflow responseDecisionWorkflow;
@@ -104,10 +249,7 @@ public class WebdoxServiceImpl implements WebdoxService {
         String nombreRemitente;
         String pais;
         String email;
-
-
-
-
+        ResponseValidateStepOfWF responseValidateDocuWF;
 
         String fileName = filePath.getFileName().toString().replace(".pdf", "");
         String[] parts = fileName.split("___");
@@ -188,7 +330,7 @@ public class WebdoxServiceImpl implements WebdoxService {
 
             // PROCESO 4: VALIDAR PASO DEL PROCESO 1
             stepNumber = "1";
-            ResponseValidateDocuWF responseValidateDocuWF = validateDocuOnStepOneOfWF(idWF,stepNumber,parallelNumber);
+            responseValidateDocuWF = validateStepOfWF(idWF,stepNumber,parallelNumber);
             System.out.println("Se realizo el STEP 1 del WF");
 
 
@@ -212,8 +354,9 @@ public class WebdoxServiceImpl implements WebdoxService {
             ResponseSigner responseSigner = AssignSignerToWF(idWF, stepNumber, parallelNumber, requestSignerForWF);
 
             // PROCESO 6: VALIDAR PASO DEL PROCESO 2
-
-            String a = "1";
+            stepNumber = "2";
+            responseValidateDocuWF = validateStepOfWF(idWF,stepNumber,parallelNumber);
+            System.out.println("Se realizo el STEP 2 del WF");
 
 
         } else {

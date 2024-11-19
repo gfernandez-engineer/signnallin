@@ -8,7 +8,7 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class ResponseValidateDocuWF {
+public class ResponseValidateStepOfWF {
     private Boolean success;
 
     @JsonProperty("step")

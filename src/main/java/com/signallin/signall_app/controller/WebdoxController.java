@@ -29,7 +29,8 @@ public class WebdoxController {
     }
 
     @PostMapping("/process-pdfs")
-    public ResponseEntity<String> processPdfFiles(@RequestBody RequestWorkflow workflowRequest)
+    //public ResponseEntity<String> processPdfFiles(@RequestBody RequestWorkflow workflowRequest)
+    public ResponseEntity<String> processPdfFiles()
     {
         try {
             // Llamar al método del servicio para procesar los archivos PDF
@@ -37,8 +38,7 @@ public class WebdoxController {
             return ResponseEntity.status(HttpStatus.OK).body("Archivos PDF procesados correctamente.");
         } catch (Exception e) {
             // Retorna un 400 Bad Request si ocurre un error genérico
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error inesperado: " + e.getMessage());
-            //return ResponseEntity.status(500).body("Hubo un error al procesar los archivos PDF.");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error inesperado al procesar los archivos PDF: " + e.getMessage());
         }
 
     }

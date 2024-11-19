@@ -43,9 +43,9 @@ public interface WebdoxClient {
 
 
 
-    //04. Validando el documento adjuntado al step 01 del WF
+    //04. Validación del step en el proceso del WF
     @PutMapping("/decision_workflows/{ID_WF}/validate")
-    ResponseValidateDocuWF validateDocuOnStepOneOfWF(@PathVariable("ID_WF")String idWF,
+    ResponseValidateStepOfWF validateStepOfWF(@PathVariable("ID_WF")String idWF,
                                                      @RequestParam("number") String stepNumber,
                                                      @RequestParam("parallel_number") String parallelNumber,
                                                      @RequestHeader("Authorization") String authorization);
