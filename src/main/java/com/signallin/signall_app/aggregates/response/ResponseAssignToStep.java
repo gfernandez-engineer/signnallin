@@ -1,10 +1,12 @@
 package com.signallin.signall_app.aggregates.response;
 
-import lombok.Getter;
-import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.*;
 
-@Getter
-@Setter
+@Data
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@AllArgsConstructor
+@NoArgsConstructor
 public class ResponseAssignToStep {
     private String id;
     private String name;
