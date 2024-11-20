@@ -10,9 +10,20 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class ResponseDocumentWF {
+public class ResponseCurrentStep {
+    @JsonProperty("id_number")
+    private String idNumber;
 
-    @JsonProperty("document")
-    private ResponseDocumentData responseDocument;
+    @JsonProperty("id_parallel_number")
+    private String idParallelNumber;
+
+    private String name;
+
+    @JsonProperty("step_type")
+    private String stepType;
+
+    @JsonProperty("assigned_to")
+    private  String[] assignedTo;
+
 
 }

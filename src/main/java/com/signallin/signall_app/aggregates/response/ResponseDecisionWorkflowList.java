@@ -10,9 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class ResponseDocumentWF {
-
-    @JsonProperty("document")
-    private ResponseDocumentData responseDocument;
-
+public class ResponseDecisionWorkflowList {
+    @JsonProperty("decision_workflows")
+    private ResponseDecisionWorkflows[] responseDecisionWorkflows;
 }

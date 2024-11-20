@@ -1,11 +1,13 @@
 package com.signallin.signall_app.aggregates.response;
 
-import lombok.Getter;
-import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.*;
 
 import javax.naming.ldap.PagedResultsControl;
-@Getter
-@Setter
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ResponseSigner {
     private String id;
     private String step_number;
